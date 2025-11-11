@@ -16,6 +16,23 @@ FEATURE_FILE = os.path.join(RESULT_PATH, "features.npy")
 PATH_FILE = os.path.join(RESULT_PATH, "paths.npy")
 LABEL_FILE = os.path.join(RESULT_PATH, "labels.npy")
 
+# Load model & data before any menu logic to ensure base_model is always defined
+@st.cache_resource
+def load_resources():
+    model = joblib.load(MODEL_PATH)
+    base_model = MobileNetV2(weights="imagenet", include_top=False, pooling="avg", input_shape=(224, 224, 3))
+    features = np.load(FEATURE_FILE)
+    paths = np.load(PATH_FILE, allow_pickle=True)
+    labels = np.load(LABEL_FILE, allow_pickle=True)
+    return model, base_model, features, paths, labels
+
+try:
+    model, base_model, features, paths, labels = load_resources()
+    classes = sorted(list(set(labels)))
+except Exception as err:
+    st.error(f"❌ Lỗi khi tải model/data/feature: {err}")
+    st.stop()
+
 # Sử dụng st.radio cho sidebar menu để đảm bảo chọn tab hoạt động tốt
 menu_options = [
     "🏠 Trang chủ",
@@ -380,22 +397,6 @@ elif menu == "📖 Hướng dẫn sử dụng":
 elif menu == "📈 Báo cáo":
     st.markdown("<h2 style='color:#2874A6;'>📈 Báo cáo kiểm thử model AI</h2>", unsafe_allow_html=True)
 
-@st.cache_resource
-def load_resources():
-    model = joblib.load(MODEL_PATH)
-    base_model = MobileNetV2(weights="imagenet", include_top=False, pooling="avg", input_shape=(224, 224, 3))
-    features = np.load(FEATURE_FILE)
-    paths = np.load(PATH_FILE, allow_pickle=True)
-    labels = np.load(LABEL_FILE, allow_pickle=True)
-    return model, base_model, features, paths, labels
-
-# Load model & data before tabs
-try:
-    model, base_model, features, paths, labels = load_resources()
-    classes = sorted(list(set(labels)))
-except Exception as err:
-    st.error(f"❌ Lỗi khi tải model/data/feature: {err}")
-    st.stop()
 
 # Function and call for model test report - placed AFTER model, features, labels have loaded
 if menu == "📈 Báo cáo":
