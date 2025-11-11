@@ -13,8 +13,8 @@ pillow==10.4.0
 
 # Web frameworks
 streamlit==1.39.0
-fastapi==0.115.0
-uvicorn==0.29.0
+# fastapi==0.115.0 (bỏ vì gây conflict với tensorflow)
+# uvicorn==0.29.0   (bỏ vì gây conflict với tensorflow)
 
 # Utilities
 requests==2.32.3
