@@ -320,14 +320,14 @@ elif menu == "🔍 Tìm kiếm":
             img_preproc = preprocess_input(img_array)
             query_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
 
-            # Dùng KNN tìm ảnh tương tự nhất
-            k = min(5, len(features))
+            # Dùng KNN tìm 3 ảnh tương tự nhất
+            k = min(3, len(features))
             knn = NearestNeighbors(n_neighbors=k, metric="cosine")
             knn.fit(features)
             dists, idxs = knn.kneighbors(query_feat)
             dists = dists[0]
             idxs = idxs[0]
-            st.markdown("<h4 style='color:#2874A6;'>🔍 Các ảnh tương tự nhất trong dataset</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color:#2874A6;'>🔍 3 ảnh tương tự nhất trong dataset</h4>", unsafe_allow_html=True)
             cols = st.columns(k+1)
             with cols[0]:
                 st.markdown("""
