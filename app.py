@@ -346,7 +346,9 @@ elif menu == "🔍 Tìm kiếm":
             shown = False
             for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                 sim_img_rel = paths[img_idx]
-                sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
+                sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel))
+                # Debug log path in a hidden block (for troubleshooting)
+                # st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                 if os.path.exists(sim_img_path):
                     with cols[i]:
                         st.markdown(f"""
@@ -357,6 +359,9 @@ elif menu == "🔍 Tìm kiếm":
                         """, unsafe_allow_html=True)
                         st.image(sim_img_path, caption=None)
                         shown = True
+                    # break  # Nếu chỉ cần hiện 1 ảnh, bỏ break sẽ show đầy đủ top 3
+                else:
+                    st.write(f"⚠️ Không tìm thấy file: {sim_img_path}")
             if not shown:
                 st.warning('Không tìm thấy ảnh tương tự trong dataset.')
         except Exception as e:
@@ -410,7 +415,8 @@ elif menu == "🕑 Lịch sử":
                     shown = False
                     for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                         sim_img_rel = paths[img_idx]
-                        sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
+                        sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel))
+                        # st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                         if os.path.exists(sim_img_path):
                             with cols[i]:
                                 st.markdown(f"""
@@ -421,6 +427,9 @@ elif menu == "🕑 Lịch sử":
                                 """, unsafe_allow_html=True)
                                 st.image(sim_img_path, caption=None)
                                 shown = True
+                            # break
+                        else:
+                            st.write(f"⚠️ Không tìm thấy file: {sim_img_path}")
                     if not shown:
                         st.warning('Không tìm thấy ảnh tương tự trong dataset!')
                 except Exception as e:
