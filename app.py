@@ -335,7 +335,7 @@ elif menu == "🔍 Tìm kiếm":
                         <span style='font-weight:bold; color:#2874A6;'>Ảnh truy vấn</span>
                     </div>
                 """, unsafe_allow_html=True)
-                st.image(img_search, caption=None, use_container_width=True)
+                st.image(img_search, caption=None)
             for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
@@ -347,7 +347,7 @@ elif menu == "🔍 Tìm kiếm":
                                 <span style='color:#888;'>Dist={dist:.3f}</span>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.image(sim_img_path, caption=None, use_container_width=True)
+                        st.image(sim_img_path, caption=None)
         except Exception as e:
             st.error(f"❌ Lỗi xử lý tìm kiếm tương tự: {e}")
 
