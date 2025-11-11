@@ -1,13 +1,5 @@
-# Core build tools
-pip>=25.3
-setuptools>=80.9.0
-wheel>=0.40.0
-
-# Streamlit
-streamlit==1.26.0
+streamlit==1.25.0
 streamlit-option-menu==0.6.2
-
-# Optional visualization
 pandas==2.1.1
-altair==5.2.0
-matplotlib==3.7.2
+altair==5.0.1
+sqlalchemy==2.0.20
