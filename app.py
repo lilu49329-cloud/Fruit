@@ -348,7 +348,7 @@ elif menu == "🔍 Tìm kiếm":
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel))
                 # Debug log path in a hidden block (for troubleshooting)
-                # st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
+                st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                 if os.path.exists(sim_img_path):
                     with cols[i]:
                         st.markdown(f"""
