@@ -1,42 +1,41 @@
-# Hệ thống Nhận Diện Trái Cây bằng KNN (Khoảng cách tương quan)
+# Hướng dẫn khắc phục lỗi build "metadata-generation-failed" khi deploy trên Render
 
-## Giới thiệu
-Ứng dụng giúp nhận diện loại trái cây trong ảnh và tìm kiếm các ảnh tương tự dựa trên bộ dữ liệu có sẵn. Hệ thống kết hợp mô hình MobileNetV2 để trích xuất đặc trưng hình ảnh và thuật toán K-Nearest Neighbors (KNN) với metric tương quan để phân loại. Phần front-end được xây dựng bằng Streamlit, backend sử dụng FastAPI và dữ liệu truy vấn được lưu trữ trong SQLite.
+## Nguyên nhân
+- Một số package Python như scipy, numpy... ở các phiên bản mới chưa có wheel cho Python >=3.13 trên môi trường Linux cloud (Render).
+- Nếu Render tự động chọn Python 3.13, quá trình install sẽ buộc phải build từ source — nhưng môi trường lại thiếu gfortran, flang, ... dẫn đến lỗi không thể cài package (như log đã chỉ ra).
 
-Các điểm nổi bật:
-- Nhận diện trái cây trực tuyến qua giao diện web thân thiện.
-- Tìm kiếm các ảnh tương tự nhất trong dataset để kiểm chứng kết quả.
-- Lưu lịch sử truy vấn và top ảnh đề xuất cho việc đánh giá, báo cáo.
-- Hỗ trợ huấn luyện lại mô hình KNN dựa trên tập đặc trưng mới.
+## Cách giải quyết
+1. **Chỉ định rõ phiên bản Python hỗ trợ tốt nhất:**
+   - Đảm bảo file `runtime.txt` có dòng:
+     ```
+     python-3.10.13
+     ```
+     Hoặc 3.11.x (các bản stable, LTS).
+   - Buộc Render dùng đúng version này (nếu Render bỏ qua file runtime.txt, có thể phải thiết lập biến môi trường `PYTHON_VERSION=3.10.13` trong dashboard).
 
-## Sơ đồ tổng quan hệ thống
-![Sơ đồ hệ thống](results/system_diagram.png)
+2. **Giữ nguyên hoặc nâng nhẹ phiên bản numpy/scipy (ưu tiên wheel):**
+   - Giữ nguyên numpy==1.26.4, scipy==1.12.0 (nếu Python < 3.13), hoặc
+   - Nếu bắt buộc dùng Python >= 3.13 thì phải bỏ fix version (`numpy`, `scipy` không ghi `==...`) hoặc hạ version, nhưng *không khuyến khích*.
+ 
+3. **Kiểm tra kỹ file requirements.txt**:
+   - Không để version numpy, scipy vượt quá support của phiên bản Python mà bạn deploy.
+   - Khuyên dùng các bản phổ biến nhất đã có wheel.
 
-Sơ đồ mô tả luồng xử lý từ người dùng (Streamlit) tới API (FastAPI), mô hình và việc lưu trữ kết quả.
+4. **Chú ý:** 
+   - Nếu buộc phải dùng Python 3.13 (rất không nên), cần build Fortran compiler, cực kỳ phức tạp trên cloud CI và không nên thực hiện.
 
-## Cấu trúc thư mục chính
-```
-fruit_recognition_project/
-│
-├── app.py                      # Giao diện Streamlit
-├── backend_api.py              # FastAPI phục vụ API /predict và /history
-├── train_knn_correlation.py    # Script huấn luyện/tìm kiếm KNN
-├── style.css                   # Tuỳ biến giao diện cho Streamlit
-├── requirements.txt            # Danh sách thư viện cần cài đặt
-├── DEPLOY_GUIDE.md             # Tài liệu triển khai chi tiết
-├── README.md                   # Tài liệu hướng dẫn tổng quan (file hiện tại)
-│
-├── dataset/                    # Bộ dữ liệu ảnh theo lớp (apple/, banana/, ...)
-├── results/                    # Lưu trữ mô hình, đặc trưng, log và truy vấn
-│   ├── features.npy / labels.npy / paths.npy
-│   ├── knn_correlation_model.joblib
-│   ├── knn_image_search.joblib
-│   ├── confusion_matrix.png, system_diagram.png, ...
-│   └── queries/                # Ảnh người dùng tải lên trong quá trình sử dụng
-│
-├── query_history.db            # CSDL SQLite lưu lịch sử truy vấn
-├── project_presentation.ipynb  # Notebook trình bày dự án
-├── Trichrutdactrung.ipynb      # Notebook trích rút đặc trưng
+## Kết luận & hướng dẫn deploy lại
+- **Luôn để file `runtime.txt` với nội dung `python-3.10.13`.**
+- Nếu deploy vẫn lỗi Python 3.13 trên Render, vào phần **Environment** của Render Dashboard, **add biến môi trường** `PYTHON_VERSION` thành `3.10.13` hoặc `3.10`.
+- Push lại code & deploy lại, log cần hiển thị đúng Python version (3.10.x), nếu còn lỗi vui lòng kiểm tra lại file requirements.txt hoặc liên hệ support của Render.
+
+---
+**Tóm tắt lý do:** Render hiện tại dùng Python 3.13 mặc dù file runtime.txt đã chỉ định 3.10.13; nguyên nhân do buildpack của Render dùng version mặc định mới nhất nếu cấu hình phụ không đúng. scipy/numpy các version mới không còn support Python cũ (3.10, 3.11) lâu dài, nên deploy cloud cần dùng version phổ biến, phổ biến nhất là Python 3.10 (năm 2024).
+
+---
+**Reference:**  
+- https://render.com/docs/python-version  
+- https://github.com/scipy/scipy/issues/19627  
 └── Trichrutdactrung_out.ipynb  # Notebook xuất kết quả đặc trưng
 ```
 

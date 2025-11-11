@@ -1,12 +1,21 @@
-setuptools>=65.5.0
-wheel>=0.38.0
-numpy==1.26.4
-scipy==1.12.0
+# Numpy & SciPy (phiên bản tương thích TensorFlow 2.13 và có wheel sẵn)
+numpy==1.24.3
+scipy==1.10.1
+
+# Machine Learning
+tensorflow==2.13.0
 scikit-learn==1.4.2
+
+# Visualization
 matplotlib==3.9.0
 scikit-image==0.23.2
-tensorflow==2.13.0
-joblib==1.3.2
 pillow==10.4.0
+
+# Web frameworks
 streamlit==1.39.0
+fastapi==0.115.0
+uvicorn==0.29.0
+
+# Utilities
 requests==2.32.3
+joblib==1.3.2
