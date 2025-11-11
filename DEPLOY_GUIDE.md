@@ -1,37 +1,60 @@
-# HƯỚNG DẪN TRIỂN KHAI HỆ THỐNG
+# Hướng dẫn deploy backend API và web lên Cloud
 
-## 1. Cài đặt môi trường
+## I. Chuẩn bị  
+- Đã tách file requirements.txt (chỉ dùng cho frontend `app.py` trên Streamlit Cloud)
+- Đã tạo file requirements-backend.txt để deploy backend API (FastAPI)
+- Đã tạo Procfile cho backend (Railway/Render)
 
-```bash
-pip install -r requirements.txt
-```
+## II. Deploy backend API (FastAPI)
+### 1. Chuẩn bị repository  
+Đảm bảo repo chứa:
+- backend_api.py
+- requirements-backend.txt
+- Procfile
+- dataset/, results/ và các model file cần thiết
 
-## 2. Chạy backend API (nếu dùng FastAPI)
+### 2. Deploy trên Railway hoặc Render  
+- **Railway**:  
+  1. Truy cập https://railway.app/new
+  2. Kết nối với repo GitHub này
+  3. Khi Railway hỏi dependencies, đổi thành:  
+     ```
+     pip install -r requirements-backend.txt
+     ```
+  4. Deploy tự động (Railway dùng Procfile sẽ chạy:  
+     ```
+     web: uvicorn backend_api:app --host 0.0.0.0 --port 8000
+     ```
+     )
+  5. Sau khi deploy thành công, lấy đường dẫn public (ví dụ: `https://fruit-backend-production.up.railway.app`)
 
-```bash
-uvicorn backend_api:app --reload --host 0.0.0.0 --port 8000
-```
+- **Render**:  
+  Tương tự Railway (chọn Python Build, thiết lập entrypoint là Procfile, dùng requirements-backend.txt để cài packages)
 
-## 3. Chạy giao diện người dùng (Streamlit)
+### 3. Lưu ý
+- **Deploy thất bại thường do thiếu file model/dataset hoặc sai tên `requirements-backend.txt`.**
+- Nếu model nặng quá hoặc có file data >100 MB, cân nhắc chia nhỏ hoặc dùng dịch vụ object storage.
 
-```bash
-streamlit run app.py
-```
+## III. Sửa app.py để kết nối backend cloud
+- Mở file app.py và sửa các dòng có `"http://localhost:8000"` thành public backend URL, ví dụ:
+  ```python
+  BACKEND_API_URL = "https://fruit-backend-production.up.railway.app"
+  ```
+  Và thay mọi requests.post/get từ localhost sang CLOUD_URL này.
 
-## 4. Truy cập hệ thống
-- Mở trình duyệt và truy cập địa chỉ: http://localhost:8501
-- Tải ảnh lên để nhận diện và xem kết quả.
+## IV. Deploy frontend Streamlit trên Streamlit Cloud
+- Truy cập https://streamlit.io/cloud
+- Deploy repo này, giữ nguyên requirements.txt (KHÔNG có fastapi/uvicorn/paython-multipart)
+- Streamlit sẽ tự build app.py và tạo giao diện web trên cloud.
 
-## 5. Lưu ý triển khai trên server/cloud
-- Cần mở port 8000 (API) và 8501 (Streamlit) trên firewall.
-- Có thể dùng dịch vụ như Heroku, Azure, AWS để deploy.
-- Đảm bảo các file model và dataset đều có trên server.
-
-## 6. Bảo mật & nâng cấp
-- Thêm xác thực API nếu cần.
-- Sử dụng HTTPS khi triển khai thực tế.
-- Có thể chuyển lưu lịch sử truy vấn sang database (MySQL, MongoDB, ...).
+## V. Test và hoàn thiện
+- Upload ảnh/test nhận diện trên web (Streamlit cloud sẽ gọi backend cloud API).
+- Nếu báo lỗi 5xx: kiểm tra log web (log backend cloud hoặc thử call bằng Postman).
+- Kiểm tra CORS backend và cross-origin nếu gặp lỗi fetch/network.
 
 ---
 
-**Mọi thắc mắc vui lòng liên hệ nhóm phát triển!**
+**Tóm lại:**  
+- Backend API chạy trên Railway/Render dùng `requirements-backend.txt`, Procfile, backend_api.py, dataset, results.
+- Frontend chạy trên Streamlit Cloud, chỉ cần requirements.txt, app.py.
+- Sửa app.py trỏ đúng URL backend cloud.
