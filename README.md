@@ -27,15 +27,16 @@
 ## Kết luận & hướng dẫn deploy lại
 - **Luôn để file `runtime.txt` với nội dung `python-3.10.13`.**
 - Nếu deploy vẫn lỗi Python 3.13 trên Render, vào phần **Environment** của Render Dashboard, **add biến môi trường** `PYTHON_VERSION` thành `3.10.13` hoặc `3.10`.
-- Push lại code & deploy lại, log cần hiển thị đúng Python version (3.10.x), nếu còn lỗi vui lòng kiểm tra lại file requirements.txt hoặc liên hệ support của Render.
-
----
-**Tóm tắt lý do:** Render hiện tại dùng Python 3.13 mặc dù file runtime.txt đã chỉ định 3.10.13; nguyên nhân do buildpack của Render dùng version mặc định mới nhất nếu cấu hình phụ không đúng. scipy/numpy các version mới không còn support Python cũ (3.10, 3.11) lâu dài, nên deploy cloud cần dùng version phổ biến, phổ biến nhất là Python 3.10 (năm 2024).
-
----
-**Reference:**  
-- https://render.com/docs/python-version  
-- https://github.com/scipy/scipy/issues/19627  
+├── results/                    # Lưu trữ mô hình, đặc trưng, log và truy vấn
+│   ├── features.npy / labels.npy / paths.npy
+│   ├── knn_correlation_model.joblib
+│   ├── knn_image_search.joblib
+│   ├── confusion_matrix.png, system_diagram.png, ...
+│   └── queries/                # Ảnh người dùng tải lên trong quá trình sử dụng
+│
+├── query_history.db            # CSDL SQLite lưu lịch sử truy vấn
+├── project_presentation.ipynb  # Notebook trình bày dự án
+├── Trichrutdactrung.ipynb      # Notebook trích rút đặc trưng
 └── Trichrutdactrung_out.ipynb  # Notebook xuất kết quả đặc trưng
 ```
 
