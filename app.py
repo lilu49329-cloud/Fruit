@@ -327,28 +327,13 @@ elif menu == "🔍 Tìm kiếm":
                 img_preproc = preprocess_input(img_array)
                 query_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
 
-            # Dùng KNN tìm 3 ảnh tương tự nhất
+            # Dùng KNN tìm 3 ảnh tương tự nhất (KHÔNG loại ảnh truy vấn khỏi top 3)
             k = min(3, len(features))
             knn = NearestNeighbors(n_neighbors=k, metric="cosine")
             knn.fit(features)
             dists, idxs = knn.kneighbors(query_feat)
             dists = dists[0]
             idxs = idxs[0]
-            # Loại bỏ ảnh trùng chính ảnh truy vấn 
-            unique_img_idxs = []
-            unique_dists = []
-            img_query_feat = query_feat.flatten()
-            upload_basename = os.path.basename(query_filename)
-            for img_idx, dist in zip(idxs, dists):
-                sim_img_rel = paths[img_idx]
-                sim_basename = os.path.basename(sim_img_rel)
-                candidate_feat = features[img_idx].flatten()
-                # Loại nếu cùng tên file ảnh truy vấn hoặc đặc trưng trùng hoàn toàn (cho chắc)
-                if sim_basename != upload_basename and not np.allclose(candidate_feat, img_query_feat):
-                    unique_img_idxs.append(img_idx)
-                    unique_dists.append(dist)
-                if len(unique_img_idxs) >= 3:
-                    break
             st.markdown("<h4 style='color:#2874A6;'>🔍 3 ảnh tương tự nhất trong dataset</h4>", unsafe_allow_html=True)
             cols = st.columns(4)
             with cols[0]:
@@ -359,7 +344,7 @@ elif menu == "🔍 Tìm kiếm":
                 """, unsafe_allow_html=True)
                 st.image(img_search, caption=None)
             shown = False
-            for i, (img_idx, dist) in enumerate(zip(unique_img_idxs, unique_dists), start=1):
+            for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
                 if os.path.exists(sim_img_path):
@@ -373,7 +358,7 @@ elif menu == "🔍 Tìm kiếm":
                         st.image(sim_img_path, caption=None)
                         shown = True
             if not shown:
-                st.warning('Không tìm thấy ảnh tương tự nào khác biệt so với ảnh truy vấn. Vui lòng thử một ảnh khác hoặc kiểm tra lại dataset.')
+                st.warning('Không tìm thấy ảnh tương tự trong dataset.')
         except Exception as e:
             st.error(f"❌ Lỗi xử lý tìm kiếm tương tự: {e}")
 
@@ -409,25 +394,13 @@ elif menu == "🕑 Lịch sử":
                         img_array = np.array(img_resized)
                         img_preproc = preprocess_input(img_array)
                         hist_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
-                    # Dùng KNN (corr) lấy 3 ảnh tương tự nhất trong dataset (loại trừ trùng đặc trưng query)
+                    # Dùng KNN (corr) lấy 3 ảnh tương tự nhất trong dataset (KHÔNG loại trừ ảnh truy vấn)
                     k_hist = min(3, len(features))
                     knn = NearestNeighbors(n_neighbors=k_hist, metric="cosine")
                     knn.fit(features)
                     dists, idxs = knn.kneighbors(hist_feat)
                     dists = dists[0]
                     idxs = idxs[0]
-                    unique_img_idxs = []
-                    unique_dists = []
-                    img_query_feat = hist_feat.flatten()
-                    for img_idx, dist in zip(idxs, dists):
-                        sim_img_rel = paths[img_idx]
-                        sim_basename = os.path.basename(sim_img_rel)
-                        candidate_feat = features[img_idx].flatten()
-                        if sim_basename != img_hist_basename and not np.allclose(candidate_feat, img_query_feat):
-                            unique_img_idxs.append(img_idx)
-                            unique_dists.append(dist)
-                        if len(unique_img_idxs) >= 3:
-                            break
                     cols = st.columns(4)
                     with cols[0]:
                         st.markdown(
@@ -435,7 +408,7 @@ elif menu == "🕑 Lịch sử":
                             unsafe_allow_html=True)
                         st.image(query_img_path, caption=None)
                     shown = False
-                    for i, (img_idx, dist) in enumerate(zip(unique_img_idxs, unique_dists), start=1):
+                    for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                         sim_img_rel = paths[img_idx]
                         sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
                         if os.path.exists(sim_img_path):
@@ -449,7 +422,7 @@ elif menu == "🕑 Lịch sử":
                                 st.image(sim_img_path, caption=None)
                                 shown = True
                     if not shown:
-                        st.warning('Không tìm thấy ảnh tương tự nào khác biệt so với ảnh truy vấn trong dataset. Vui lòng thử ảnh khác hoặc kiểm tra lại tập dữ liệu!')
+                        st.warning('Không tìm thấy ảnh tương tự trong dataset!')
                 except Exception as e:
                     st.error(f"Lỗi tìm kiếm tương tự lịch sử: {e}")
     # Có thể mở rộng hiển thị thêm thông tin nếu muốn lưu thêm metadata

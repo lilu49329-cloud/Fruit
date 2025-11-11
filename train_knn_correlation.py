@@ -109,7 +109,8 @@ def test_internal_image_manual(top_k=3):
         query_label = labels[idx]
         query_feat = features[idx]
         print(f"🖼️ Ảnh chọn: {os.path.basename(query_path)} | Label = {query_label}")
-        neighbor_indices, _ = search_image_from_feature(query_feat, query_path=query_path, top_k=top_k, skip_index=idx)
+        # KHÔNG loại trừ ảnh truy vấn trong kết quả (trả về cả chính nó nếu là gần nhất)
+        neighbor_indices, _ = search_image_from_feature(query_feat, query_path=query_path, top_k=top_k)
         neighbor_labels = labels[neighbor_indices]
         match = np.sum(neighbor_labels == query_label)
         print(f"\n📊 Kết quả: {match}/{top_k} ảnh trùng label.")
