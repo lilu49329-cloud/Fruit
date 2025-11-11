@@ -1,0 +1,1 @@
+[2025-11-11 12:43:45] Result: apple | Top-3: [{'filename': 'apple_001.jpg', 'label': np.str_('apple'), 'distance': 1.7296164500635314e-12}, {'filename': 'apple_079.jpg', 'label': np.str_('apple'), 'distance': 0.19981917449547926}, {'filename': 'apple_084.jpg', 'label': np.str_('apple'), 'distance': 0.29930496776612714}]

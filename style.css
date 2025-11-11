@@ -1,0 +1,56 @@
+body {
+    background: #f4f6f8;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.stApp {
+    background: #f4f6f8;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px #e0e0e0;
+    padding: 24px;
+    margin-bottom: 24px;
+    transition: box-shadow 0.2s;
+}
+.card:hover {
+    box-shadow: 0 4px 24px #b0b0b0;
+}
+
+.result-label {
+    color: #229954;
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.result-title {
+    color: #154360;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.upload-section {
+    background: #eafaf1;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 18px;
+}
+
+.history-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    padding: 12px;
+    box-shadow: 0 1px 4px #eee;
+}
+
+@media (max-width: 600px) {
+    .card, .upload-section, .history-item {
+        padding: 12px;
+    }
+    .result-label {
+        font-size: 1rem;
+    }
+}

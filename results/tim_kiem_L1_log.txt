@@ -1,0 +1,9 @@
+
+============================================================
+Thời gian: 20251023_151640
+Ảnh truy vấn: dataset\apple\apple_088.jpg
+Nhãn thật: apple
+Kết quả TOP-3 (L1 distance):
+  1. apple_074.jpg | L1: 216.2791
+  2. apple_084.jpg | L1: 226.0896
+  3. apple_091.jpg | L1: 240.3579
