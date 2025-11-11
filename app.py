@@ -346,7 +346,7 @@ elif menu == "🔍 Tìm kiếm":
             shown = False
             for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                 sim_img_rel = paths[img_idx]
-                sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel))
+                sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel.replace("\\", "/")))
                 # Debug log path in a hidden block (for troubleshooting)
                 st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                 if os.path.exists(sim_img_path):
@@ -415,7 +415,8 @@ elif menu == "🕑 Lịch sử":
                     shown = False
                     for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
                         sim_img_rel = paths[img_idx]
-                        sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel))
+                        sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel.replace("\\", "/")))
+
                         # st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                         if os.path.exists(sim_img_path):
                             with cols[i]:
