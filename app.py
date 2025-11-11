@@ -241,8 +241,6 @@ elif menu == "🍎 Nhận diện quả":
     if img is not None:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.image(img, caption="Ảnh bạn vừa chọn", width=250)
-        import requests
-        import io
         # Tạo thư mục lưu truy vấn nếu chưa có
         query_dir = os.path.join(RESULT_PATH, "queries")
         os.makedirs(query_dir, exist_ok=True)
@@ -251,19 +249,15 @@ elif menu == "🍎 Nhận diện quả":
         query_filepath = os.path.join(query_dir, query_filename)
         img.save(query_filepath)
         try:
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            buf.seek(0)
-            files = {"file": (query_filename, buf, "image/png")}
-            response = requests.post("http://localhost:8000/predict", files=files)
-            if response.status_code == 200:
-                data = response.json()
-                result = data.get("predicted_label", "Không xác định")
-                st.markdown(f"<div class='result-label'>🎯 Kết quả dự đoán: <span class='result-title'>{result}</span></div>", unsafe_allow_html=True)
-            else:
-                st.error(f"❌ Lỗi từ backend: {response.text}")
+            # Tiền xử lý ảnh đầu vào
+            img_resized = img.resize((224, 224))
+            img_array = np.array(img_resized)
+            img_preproc = preprocess_input(img_array)
+            feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
+            pred = model.predict(feat)[0]
+            st.markdown(f"<div class='result-label'>🎯 Kết quả dự đoán: <span class='result-title'>{pred}</span></div>", unsafe_allow_html=True)
         except Exception as e:
-            st.error(f"❌ Lỗi xử lý hoặc kết nối backend: {e}")
+            st.error(f"❌ Lỗi xử lý model nhận diện: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
 
 elif menu == "🔍 Tìm kiếm":
@@ -295,8 +289,6 @@ elif menu == "🔍 Tìm kiếm":
             img_search = None
     if img_search is not None:
         st.image(img_search, caption="Ảnh bạn vừa chọn", width=250)
-        import requests
-        import io
         # Tạo thư mục lưu truy vấn nếu chưa có
         query_dir = os.path.join(RESULT_PATH, "queries")
         os.makedirs(query_dir, exist_ok=True)
@@ -305,77 +297,65 @@ elif menu == "🔍 Tìm kiếm":
         query_filepath = os.path.join(query_dir, query_filename)
         img_search.save(query_filepath)
         try:
-            buf = io.BytesIO()
-            img_search.save(buf, format="PNG")
-            buf.seek(0)
-            files = {"file": (query_filename, buf, "image/png")}
-            response = requests.post("http://localhost:8000/predict", files=files)
-            if response.status_code == 200:
-                data = response.json()
-                st.markdown("<h4 style='color:#2874A6;'>🔍 Các ảnh tương tự nhất trong dataset</h4>", unsafe_allow_html=True)
-                top_similar = data.get("top_similar", [])
-                cols = st.columns(len(top_similar)+1)
-                with cols[0]:
-                    st.markdown("""
-                        <div style='text-align:center; padding:10px;'>
-                            <span style='font-weight:bold; color:#2874A6;'>Ảnh truy vấn</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    st.image(img_search, caption=None, use_container_width=True)
-                for i, sim in enumerate(top_similar, start=1):
-                    sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim["path"])
-                    if os.path.exists(sim_img_path):
-                        with cols[i]:
-                            st.markdown(f"""
-                                <div style='text-align:center; padding:10px;'>
-                                    <span style='font-weight:bold; color:#229954;'>Tương tự #{i}</span><br>
-                                    <span style='color:#888;'>Dist={sim['distance']:.3f}</span>
-                                </div>
-                            """, unsafe_allow_html=True)
-                            st.image(sim_img_path, caption=None, use_container_width=True)
-            else:
-                st.error(f"❌ Lỗi từ backend: {response.text}")
+            # Trích xuất đặc trưng từ ảnh truy vấn
+            img_resized = img_search.resize((224, 224))
+            img_array = np.array(img_resized)
+            img_preproc = preprocess_input(img_array)
+            query_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
+
+            # Dùng KNN tìm ảnh tương tự nhất
+            k = min(5, len(features))
+            knn = NearestNeighbors(n_neighbors=k, metric="cosine")
+            knn.fit(features)
+            dists, idxs = knn.kneighbors(query_feat)
+            dists = dists[0]
+            idxs = idxs[0]
+            st.markdown("<h4 style='color:#2874A6;'>🔍 Các ảnh tương tự nhất trong dataset</h4>", unsafe_allow_html=True)
+            cols = st.columns(k+1)
+            with cols[0]:
+                st.markdown("""
+                    <div style='text-align:center; padding:10px;'>
+                        <span style='font-weight:bold; color:#2874A6;'>Ảnh truy vấn</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                st.image(img_search, caption=None, use_container_width=True)
+            for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
+                sim_img_rel = paths[img_idx]
+                sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
+                if os.path.exists(sim_img_path):
+                    with cols[i]:
+                        st.markdown(f"""
+                            <div style='text-align:center; padding:10px;'>
+                                <span style='font-weight:bold; color:#229954;'>Tương tự #{i}</span><br>
+                                <span style='color:#888;'>Dist={dist:.3f}</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        st.image(sim_img_path, caption=None, use_container_width=True)
         except Exception as e:
-            st.error(f"❌ Lỗi xử lý hoặc kết nối backend: {e}")
+            st.error(f"❌ Lỗi xử lý tìm kiếm tương tự: {e}")
 
 elif menu == "🕑 Lịch sử":
     st.markdown("<div class='card'><h2 style='color:#2874A6;'>🕑 Lịch sử truy vấn gần đây</h2></div>", unsafe_allow_html=True)
-    try:
-        import requests
-        resp = requests.get("http://localhost:8000/history")
-        if resp.status_code == 200:
-            history = resp.json().get("history", [])
-            if not history:
-                st.info("Chưa có lịch sử truy vấn nào.")
-            else:
-                valid_history = []
-                for item in history:
-                    query_img_path = os.path.join(RESULT_PATH, "queries", item['filename'])
-                    if os.path.exists(query_img_path):
-                        valid_history.append((item, query_img_path))
-                if not valid_history:
-                    st.info("Chưa có lịch sử truy vấn nào.")
-                else:
-                    for item, query_img_path in valid_history:
-                        st.markdown(f"<div class='history-item'><b>Thời gian:</b> {item['timestamp']}<br><b>Tên file:</b> {item['filename']}<br><b>Kết quả nhận diện:</b> <span class='result-label'>{item['predicted_label']}</span></div>", unsafe_allow_html=True)
-                        cols = st.columns(4)
-                        # Ảnh truy vấn
-                        with cols[0]:
-                            st.markdown("<div style='text-align:center;'><b>Ảnh truy vấn</b></div>", unsafe_allow_html=True)
-                            st.image(query_img_path, caption=None, width=150)
-                        # 3 ảnh tương tự
-                        for i, sim in enumerate(item['top_similar'][:3]):
-                            sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim['path'])
-                            with cols[i+1]:
-                                st.markdown(f"<div style='text-align:center;'><b>Tương tự #{i+1}</b><br><span style='color:#888;'>Dist={sim['distance']:.3f}</span></div>", unsafe_allow_html=True)
-                                if os.path.exists(sim_img_path):
-                                    st.image(sim_img_path, caption=None, width=150)
-                                else:
-                                    st.markdown("<div style='color:#888;'>Không tìm thấy ảnh</div>", unsafe_allow_html=True)
-        else:
-            st.error(f"Không lấy được lịch sử: {resp.text}")
-    except Exception as e:
-        st.error(f"Lỗi khi lấy lịch sử: {e}")
+    # Lưu truy vấn lịch sử tạm thời trong session_state
+    if "history_queries" not in st.session_state:
+        st.session_state.history_queries = []
+
+    # Merge các truy vấn từ thư mục (nếu có) và session_state cho hiển thị demo
+    query_dir = os.path.join(RESULT_PATH, "queries")
+    history_files = []
+    if os.path.exists(query_dir):
+        history_files = sorted(os.listdir(query_dir), reverse=True)[:10]
+
+    if not history_files and not st.session_state.history_queries:
+        st.info("Chưa có lịch sử truy vấn nào.")
+    else:
+        for filename in history_files:
+            query_img_path = os.path.join(query_dir, filename)
+            if os.path.exists(query_img_path):
+                st.markdown(f"<div class='history-item'><b>Tên file:</b> {filename}</div>", unsafe_allow_html=True)
+                st.image(query_img_path, caption="Ảnh truy vấn", width=150)
+    # Có thể mở rộng hiển thị thêm thông tin nếu muốn lưu thêm metadata
+
 
 elif menu == "📖 Hướng dẫn sử dụng":
     st.markdown("<h2 style='color:#2874A6;'>📖 Hướng dẫn sử dụng</h2>", unsafe_allow_html=True)
