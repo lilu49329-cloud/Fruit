@@ -390,8 +390,12 @@ def load_resources():
     return model, base_model, features, paths, labels
 
 # Load model & data before tabs
-model, base_model, features, paths, labels = load_resources()
-classes = sorted(list(set(labels)))
+try:
+    model, base_model, features, paths, labels = load_resources()
+    classes = sorted(list(set(labels)))
+except Exception as err:
+    st.error(f"❌ Lỗi khi tải model/data/feature: {err}")
+    st.stop()
 
 # Function and call for model test report - placed AFTER model, features, labels have loaded
 if menu == "📈 Báo cáo":
