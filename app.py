@@ -399,18 +399,7 @@ elif menu == "📖 Hướng dẫn sử dụng":
 
 elif menu == "📈 Báo cáo":
     st.markdown("<h2 style='color:#2874A6;'>📈 Báo cáo kiểm thử model AI</h2>", unsafe_allow_html=True)
-    # Đảm bảo model, features, labels đã được load try:
-    if 'features' in globals() and 'labels' in globals() and 'model' in globals():
-            def report_model_accuracy():
-                correct = 0
-                total = len(features)
-                for i in range(total):
-                    feat = features[i].reshape(1, -1)
-                    pred = model.predict(feat)[0]
-                    if pred == labels[i]:
-                        correct += 1
-                st.info(f"**Độ chính xác nhận diện trên dataset: {correct}/{total} ({correct/total:.2%})**")
-            report_model_accuracy()
+
 @st.cache_resource
 def load_resources():
     model = joblib.load(MODEL_PATH)
@@ -423,6 +412,19 @@ def load_resources():
 # Load model & data before tabs
 model, base_model, features, paths, labels = load_resources()
 classes = sorted(list(set(labels)))
+
+# Function and call for model test report - placed AFTER model, features, labels have loaded
+if menu == "📈 Báo cáo":
+    def report_model_accuracy():
+        correct = 0
+        total = len(features)
+        for i in range(total):
+            feat = features[i].reshape(1, -1)
+            pred = model.predict(feat)[0]
+            if pred == labels[i]:
+                correct += 1
+        st.info(f"**Độ chính xác nhận diện trên dataset: {correct}/{total} ({correct/total:.2%})**")
+    report_model_accuracy()
 
 
 
