@@ -348,7 +348,6 @@ elif menu == "🔍 Tìm kiếm":
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel.replace("\\", "/")))
                 # Debug log path in a hidden block (for troubleshooting)
-                st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                 if os.path.exists(sim_img_path):
                     with cols[i]:
                         st.markdown(f"""
@@ -368,75 +367,81 @@ elif menu == "🔍 Tìm kiếm":
             st.error(f"❌ Lỗi xử lý tìm kiếm tương tự: {e}")
 
 elif menu == "🕑 Lịch sử":
-    st.markdown("<div class='card'><h2 style='color:#2874A6;'>🕑 Lịch sử truy vấn gần đây</h2></div>", unsafe_allow_html=True)
-    # Lưu truy vấn lịch sử tạm thời trong session_state
-    if "history_queries" not in st.session_state:
-        st.session_state.history_queries = []
+    st.markdown("<h2 style='color:#2874A6;'>🕑 Lịch sử truy vấn gần đây</h2>", unsafe_allow_html=True)
 
-    # Merge các truy vấn từ thư mục (nếu có) và session_state cho hiển thị demo
+    # Thư mục chứa ảnh lịch sử
     query_dir = os.path.join(RESULT_PATH, "queries")
-    history_files = []
-    if os.path.exists(query_dir):
-        history_files = sorted(os.listdir(query_dir), reverse=True)[:10]
+    os.makedirs(query_dir, exist_ok=True)
 
-    if not history_files and not st.session_state.history_queries:
-        st.info("Chưa có lịch sử truy vấn nào.")
+    # Lấy danh sách ảnh (mới nhất trước)
+    history_files = sorted(os.listdir(query_dir), reverse=True)[:10]
+
+    # Nút xóa toàn bộ lịch sử
+    if history_files:
+        if st.button("🧹 Xóa toàn bộ lịch sử", key="clear_history"):
+            try:
+                for f in history_files:
+                    os.remove(os.path.join(query_dir, f))
+                st.success("✅ Đã xóa toàn bộ lịch sử truy vấn!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Không thể xóa toàn bộ lịch sử: {e}")
+
+    # Nếu chưa có truy vấn nào
+    if not history_files:
+        st.info("📂 Chưa có lịch sử truy vấn nào.")
     else:
         for filename in history_files:
             query_img_path = os.path.join(query_dir, filename)
-            if os.path.exists(query_img_path):
-                st.markdown(f"<div class='history-item'><b>Tên file:</b> {filename}</div>", unsafe_allow_html=True)
-                st.image(query_img_path, caption="Ảnh truy vấn", width=150)
-                # Hiển thị thêm 3 ảnh tương tự nhất bằng KNN
-                try:
-                    img_hist_basename = os.path.basename(filename)
-                    match_hist_idxs = [i for i, p in enumerate(paths) if os.path.basename(p) == img_hist_basename]
-                    if match_hist_idxs:
-                        hist_feat = features[match_hist_idxs[0]].reshape(1, -1)
+            if not os.path.exists(query_img_path):
+                continue
+
+            st.markdown(f"""
+                <div style='padding:12px; margin-top:8px; border-radius:12px;
+                            background:linear-gradient(90deg,#f9f9f9 0%,#f0fff4 100%);
+                            box-shadow:0 2px 6px rgba(0,0,0,0.05);'>
+                    <h4 style='color:#2874A6; margin-bottom:8px;'>📸 {filename}</h4>
+                </div>
+            """, unsafe_allow_html=True)
+
+            cols_top = st.columns([1, 3])
+            with cols_top[0]:
+                st.image(query_img_path, caption="Ảnh truy vấn", width=180)
+                if st.button("🗑️ Xóa ảnh này", key=f"delete_{filename}"):
+                    try:
+                        os.remove(query_img_path)
+                        st.success(f"✅ Đã xóa {filename}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Lỗi khi xóa {filename}: {e}")
+
+            # Hiển thị ảnh tương tự
+            try:
+                img_hist = Image.open(query_img_path).convert("RGB")
+                img_resized = img_hist.resize((224, 224))
+                img_array = np.array(img_resized)
+                img_preproc = preprocess_input(img_array)
+                hist_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
+
+                k_hist = min(3, len(features))
+                knn = NearestNeighbors(n_neighbors=k_hist, metric="cosine")
+                knn.fit(features)
+                dists, idxs = knn.kneighbors(hist_feat)
+                dists, idxs = dists[0], idxs[0]
+
+                st.markdown("<h5 style='color:#2874A6;'>🔍 Ảnh tương tự nhất:</h5>", unsafe_allow_html=True)
+                cols_sim = st.columns(3)
+                for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
+                    sim_img_rel = paths[img_idx]
+                    sim_img_path = os.path.join(os.path.dirname(RESULT_PATH),
+                                                os.path.normpath(sim_img_rel.replace('\\', '/')))
+                    if os.path.exists(sim_img_path):
+                        with cols_sim[i - 1]:
+                            st.image(sim_img_path, caption=f"Tương tự #{i}\n(Corr={1 - dist:.3f})")
                     else:
-                        img_hist = Image.open(query_img_path).convert("RGB")
-                        img_resized = img_hist.resize((224, 224))
-                        img_array = np.array(img_resized)
-                        img_preproc = preprocess_input(img_array)
-                        hist_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
-                    # Dùng KNN (corr) lấy 3 ảnh tương tự nhất trong dataset (KHÔNG loại trừ ảnh truy vấn)
-                    k_hist = min(3, len(features))
-                    knn = NearestNeighbors(n_neighbors=k_hist, metric="cosine")
-                    knn.fit(features)
-                    dists, idxs = knn.kneighbors(hist_feat)
-                    dists = dists[0]
-                    idxs = idxs[0]
-                    cols = st.columns(4)
-                    with cols[0]:
-                        st.markdown(
-                            "<div style='text-align:center;padding:10px;'><span style='font-weight:bold; color:#2874A6;'>Ảnh truy vấn</span></div>",
-                            unsafe_allow_html=True)
-                        st.image(query_img_path, caption=None)
-                    shown = False
-                    for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
-                        sim_img_rel = paths[img_idx]
-                        sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel.replace("\\", "/")))
-
-                        # st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
-                        if os.path.exists(sim_img_path):
-                            with cols[i]:
-                                st.markdown(f"""
-                                    <div style='text-align:center; padding:10px;'>
-                                        <span style='font-weight:bold; color:#229954;'>Tương tự #{i}</span><br>
-                                        <span style='color:#888;'>Corr={1-dist:.3f}</span>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                st.image(sim_img_path, caption=None)
-                                shown = True
-                            # break
-                        else:
-                            st.write(f"⚠️ Không tìm thấy file: {sim_img_path}")
-                    if not shown:
-                        st.warning('Không tìm thấy ảnh tương tự trong dataset!')
-                except Exception as e:
-                    st.error(f"Lỗi tìm kiếm tương tự lịch sử: {e}")
-    # Có thể mở rộng hiển thị thêm thông tin nếu muốn lưu thêm metadata
-
+                        st.warning(f"⚠️ Không tìm thấy ảnh: {sim_img_path}")
+            except Exception as e:
+                st.error(f"❌ Lỗi khi xử lý ảnh tương tự: {e}")
 
 elif menu == "📖 Hướng dẫn sử dụng":
     st.markdown("<h2 style='color:#2874A6;'>📖 Hướng dẫn sử dụng</h2>", unsafe_allow_html=True)
