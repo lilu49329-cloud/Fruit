@@ -314,11 +314,18 @@ elif menu == "🔍 Tìm kiếm":
         query_filepath = os.path.join(query_dir, query_filename)
         img_search.save(query_filepath)
         try:
-            # Trích xuất đặc trưng từ ảnh truy vấn
-            img_resized = img_search.resize((224, 224))
-            img_array = np.array(img_resized)
-            img_preproc = preprocess_input(img_array)
-            query_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
+            # Sử dụng đặc trưng đã trích/tồn tại nếu có trong features/paths
+            img_search_basename = os.path.basename(query_filename)
+            match_idxs = [i for i, p in enumerate(paths) if os.path.basename(p) == img_search_basename]
+            if match_idxs:
+                # Nếu ảnh đã có trong dataset thì lấy đặc trưng từ file feature gốc
+                query_feat = features[match_idxs[0]].reshape(1, -1)
+            else:
+                # Nếu ảnh mới thì trích rút đặc trưng bằng model như bình thường
+                img_resized = img_search.resize((224, 224))
+                img_array = np.array(img_resized)
+                img_preproc = preprocess_input(img_array)
+                query_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
 
             # Dùng KNN tìm 3 ảnh tương tự nhất
             k = min(3, len(features))
@@ -331,9 +338,13 @@ elif menu == "🔍 Tìm kiếm":
             unique_img_idxs = []
             unique_dists = []
             img_query_feat = query_feat.flatten()
+            upload_basename = os.path.basename(query_filename)
             for img_idx, dist in zip(idxs, dists):
+                sim_img_rel = paths[img_idx]
+                sim_basename = os.path.basename(sim_img_rel)
                 candidate_feat = features[img_idx].flatten()
-                if not np.allclose(candidate_feat, img_query_feat):  # Loại bỏ nếu đặc trưng trùng khớp ảnh query
+                # Loại nếu cùng tên file ảnh truy vấn hoặc đặc trưng trùng hoàn toàn (cho chắc)
+                if sim_basename != upload_basename and not np.allclose(candidate_feat, img_query_feat):
                     unique_img_idxs.append(img_idx)
                     unique_dists.append(dist)
                 if len(unique_img_idxs) >= 3:
@@ -347,6 +358,7 @@ elif menu == "🔍 Tìm kiếm":
                     </div>
                 """, unsafe_allow_html=True)
                 st.image(img_search, caption=None)
+            shown = False
             for i, (img_idx, dist) in enumerate(zip(unique_img_idxs, unique_dists), start=1):
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
@@ -359,6 +371,9 @@ elif menu == "🔍 Tìm kiếm":
                             </div>
                         """, unsafe_allow_html=True)
                         st.image(sim_img_path, caption=None)
+                        shown = True
+            if not shown:
+                st.warning('Không tìm thấy ảnh tương tự nào khác biệt so với ảnh truy vấn. Vui lòng thử một ảnh khác hoặc kiểm tra lại dataset.')
         except Exception as e:
             st.error(f"❌ Lỗi xử lý tìm kiếm tương tự: {e}")
 
@@ -384,11 +399,16 @@ elif menu == "🕑 Lịch sử":
                 st.image(query_img_path, caption="Ảnh truy vấn", width=150)
                 # Hiển thị thêm 3 ảnh tương tự nhất bằng KNN
                 try:
-                    img_hist = Image.open(query_img_path).convert("RGB")
-                    img_resized = img_hist.resize((224, 224))
-                    img_array = np.array(img_resized)
-                    img_preproc = preprocess_input(img_array)
-                    hist_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
+                    img_hist_basename = os.path.basename(filename)
+                    match_hist_idxs = [i for i, p in enumerate(paths) if os.path.basename(p) == img_hist_basename]
+                    if match_hist_idxs:
+                        hist_feat = features[match_hist_idxs[0]].reshape(1, -1)
+                    else:
+                        img_hist = Image.open(query_img_path).convert("RGB")
+                        img_resized = img_hist.resize((224, 224))
+                        img_array = np.array(img_resized)
+                        img_preproc = preprocess_input(img_array)
+                        hist_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
                     # Dùng KNN (corr) lấy 3 ảnh tương tự nhất trong dataset (loại trừ trùng đặc trưng query)
                     k_hist = min(3, len(features))
                     knn = NearestNeighbors(n_neighbors=k_hist, metric="cosine")
@@ -400,8 +420,10 @@ elif menu == "🕑 Lịch sử":
                     unique_dists = []
                     img_query_feat = hist_feat.flatten()
                     for img_idx, dist in zip(idxs, dists):
+                        sim_img_rel = paths[img_idx]
+                        sim_basename = os.path.basename(sim_img_rel)
                         candidate_feat = features[img_idx].flatten()
-                        if not np.allclose(candidate_feat, img_query_feat):
+                        if sim_basename != img_hist_basename and not np.allclose(candidate_feat, img_query_feat):
                             unique_img_idxs.append(img_idx)
                             unique_dists.append(dist)
                         if len(unique_img_idxs) >= 3:
@@ -412,6 +434,7 @@ elif menu == "🕑 Lịch sử":
                             "<div style='text-align:center;padding:10px;'><span style='font-weight:bold; color:#2874A6;'>Ảnh truy vấn</span></div>",
                             unsafe_allow_html=True)
                         st.image(query_img_path, caption=None)
+                    shown = False
                     for i, (img_idx, dist) in enumerate(zip(unique_img_idxs, unique_dists), start=1):
                         sim_img_rel = paths[img_idx]
                         sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
@@ -424,6 +447,9 @@ elif menu == "🕑 Lịch sử":
                                     </div>
                                 """, unsafe_allow_html=True)
                                 st.image(sim_img_path, caption=None)
+                                shown = True
+                    if not shown:
+                        st.warning('Không tìm thấy ảnh tương tự nào khác biệt so với ảnh truy vấn trong dataset. Vui lòng thử ảnh khác hoặc kiểm tra lại tập dữ liệu!')
                 except Exception as e:
                     st.error(f"Lỗi tìm kiếm tương tự lịch sử: {e}")
     # Có thể mở rộng hiển thị thêm thông tin nếu muốn lưu thêm metadata
