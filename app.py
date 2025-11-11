@@ -327,8 +327,19 @@ elif menu == "🔍 Tìm kiếm":
             dists, idxs = knn.kneighbors(query_feat)
             dists = dists[0]
             idxs = idxs[0]
+            # Loại bỏ ảnh trùng chính ảnh truy vấn 
+            unique_img_idxs = []
+            unique_dists = []
+            img_query_feat = query_feat.flatten()
+            for img_idx, dist in zip(idxs, dists):
+                candidate_feat = features[img_idx].flatten()
+                if not np.allclose(candidate_feat, img_query_feat):  # Loại bỏ nếu đặc trưng trùng khớp ảnh query
+                    unique_img_idxs.append(img_idx)
+                    unique_dists.append(dist)
+                if len(unique_img_idxs) >= 3:
+                    break
             st.markdown("<h4 style='color:#2874A6;'>🔍 3 ảnh tương tự nhất trong dataset</h4>", unsafe_allow_html=True)
-            cols = st.columns(k+1)
+            cols = st.columns(4)
             with cols[0]:
                 st.markdown("""
                     <div style='text-align:center; padding:10px;'>
@@ -336,7 +347,7 @@ elif menu == "🔍 Tìm kiếm":
                     </div>
                 """, unsafe_allow_html=True)
                 st.image(img_search, caption=None)
-            for i, (img_idx, dist) in enumerate(zip(idxs, dists), start=1):
+            for i, (img_idx, dist) in enumerate(zip(unique_img_idxs, unique_dists), start=1):
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
                 if os.path.exists(sim_img_path):
@@ -344,7 +355,7 @@ elif menu == "🔍 Tìm kiếm":
                         st.markdown(f"""
                             <div style='text-align:center; padding:10px;'>
                                 <span style='font-weight:bold; color:#229954;'>Tương tự #{i}</span><br>
-                                <span style='color:#888;'>Dist={dist:.3f}</span>
+                                <span style='color:#888;'>Corr={1-dist:.3f}</span>
                             </div>
                         """, unsafe_allow_html=True)
                         st.image(sim_img_path, caption=None)
@@ -371,6 +382,50 @@ elif menu == "🕑 Lịch sử":
             if os.path.exists(query_img_path):
                 st.markdown(f"<div class='history-item'><b>Tên file:</b> {filename}</div>", unsafe_allow_html=True)
                 st.image(query_img_path, caption="Ảnh truy vấn", width=150)
+                # Hiển thị thêm 3 ảnh tương tự nhất bằng KNN
+                try:
+                    img_hist = Image.open(query_img_path).convert("RGB")
+                    img_resized = img_hist.resize((224, 224))
+                    img_array = np.array(img_resized)
+                    img_preproc = preprocess_input(img_array)
+                    hist_feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
+                    # Dùng KNN (corr) lấy 3 ảnh tương tự nhất trong dataset (loại trừ trùng đặc trưng query)
+                    k_hist = min(3, len(features))
+                    knn = NearestNeighbors(n_neighbors=k_hist, metric="cosine")
+                    knn.fit(features)
+                    dists, idxs = knn.kneighbors(hist_feat)
+                    dists = dists[0]
+                    idxs = idxs[0]
+                    unique_img_idxs = []
+                    unique_dists = []
+                    img_query_feat = hist_feat.flatten()
+                    for img_idx, dist in zip(idxs, dists):
+                        candidate_feat = features[img_idx].flatten()
+                        if not np.allclose(candidate_feat, img_query_feat):
+                            unique_img_idxs.append(img_idx)
+                            unique_dists.append(dist)
+                        if len(unique_img_idxs) >= 3:
+                            break
+                    cols = st.columns(4)
+                    with cols[0]:
+                        st.markdown(
+                            "<div style='text-align:center;padding:10px;'><span style='font-weight:bold; color:#2874A6;'>Ảnh truy vấn</span></div>",
+                            unsafe_allow_html=True)
+                        st.image(query_img_path, caption=None)
+                    for i, (img_idx, dist) in enumerate(zip(unique_img_idxs, unique_dists), start=1):
+                        sim_img_rel = paths[img_idx]
+                        sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), sim_img_rel)
+                        if os.path.exists(sim_img_path):
+                            with cols[i]:
+                                st.markdown(f"""
+                                    <div style='text-align:center; padding:10px;'>
+                                        <span style='font-weight:bold; color:#229954;'>Tương tự #{i}</span><br>
+                                        <span style='color:#888;'>Corr={1-dist:.3f}</span>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                st.image(sim_img_path, caption=None)
+                except Exception as e:
+                    st.error(f"Lỗi tìm kiếm tương tự lịch sử: {e}")
     # Có thể mở rộng hiển thị thêm thông tin nếu muốn lưu thêm metadata
 
 
