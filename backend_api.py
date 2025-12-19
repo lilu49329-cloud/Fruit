@@ -75,6 +75,16 @@ def load_resources():
     features = np.load(FEATURE_FILE)
     paths = np.load(PATH_FILE, allow_pickle=True)
     labels = np.load(LABEL_FILE, allow_pickle=True)
+    # Đảm bảo chỉ lấy đúng 10 loại quả, loại bỏ các nhãn ngoài (nếu có)
+    unique_labels = sorted(list(set(labels)))
+    if len(unique_labels) > 10:
+        print(f"[Warning] Có nhiều hơn 10 loại quả trong labels: {unique_labels}")
+        # Lấy đúng 10 loại đầu tiên (theo thứ tự alphabet)
+        mask = np.isin(labels, unique_labels[:10])
+        features = features[mask]
+        paths = paths[mask]
+        labels = labels[mask]
+        print(f"[Info] Đã lọc lại còn {len(set(labels))} loại quả.")
     all_classes = sorted(list(set(labels)))
     nn = NearestNeighbors(n_neighbors=3, metric="correlation")
     nn.fit(features)

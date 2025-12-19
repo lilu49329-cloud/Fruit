@@ -11,7 +11,10 @@ from sklearn.neighbors import NearestNeighbors
 # =========================================================
 # 1️⃣ LOAD DỮ LIỆU ĐẶC TRƯNG CÓ SẴN
 # =========================================================
-RESULT_PATH = r"C:\Users\admin\Downloads\Fruit\results"
+
+# Đường dẫn động, tự động lấy theo vị trí file script
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RESULT_PATH = os.path.join(BASE_DIR, "results")
 FEATURE_FILE = os.path.join(RESULT_PATH, "features.npy")
 PATH_FILE = os.path.join(RESULT_PATH, "paths.npy")
 LABEL_FILE = os.path.join(RESULT_PATH, "labels.npy")
@@ -19,9 +22,19 @@ LABEL_FILE = os.path.join(RESULT_PATH, "labels.npy")
 if not all(os.path.exists(p) for p in [FEATURE_FILE, PATH_FILE, LABEL_FILE]):
     raise FileNotFoundError("❌ Không tìm thấy file đặc trưng hoặc label trong thư mục results!")
 
+
 features = np.load(FEATURE_FILE)
 paths = np.load(PATH_FILE, allow_pickle=True)
 labels = np.load(LABEL_FILE, allow_pickle=True)
+# Đảm bảo chỉ lấy đúng 10 loại quả
+unique_labels = sorted(list(set(labels)))
+if len(unique_labels) > 10:
+    print(f"[Warning] Có nhiều hơn 10 loại quả trong labels: {unique_labels}")
+    mask = np.isin(labels, unique_labels[:10])
+    features = features[mask]
+    paths = paths[mask]
+    labels = labels[mask]
+    print(f"[Info] Đã lọc lại còn {len(set(labels))} loại quả.")
 
 print(f"✅ Đã load {len(features)} đặc trưng từ dataset ({len(set(labels))} lớp).")
 print("Feature dim =", features.shape[1])
@@ -128,17 +141,11 @@ def test_internal_image_manual(top_k=3):
 # 6️⃣ CHẠY CHƯƠNG TRÌNH
 # =========================================================
 if __name__ == "__main__":
-    print("\n=== CHỌN CHẾ ĐỘ ===")
-    print("1️⃣ Ảnh mới ngoài dataset (tính độ tương tự)")
-    print("2️⃣ Ảnh có trong dataset (chọn thủ công + tìm 3 ảnh giống)")
-    choice = input("Nhập lựa chọn (1 hoặc 2): ").strip()
-
-    if choice == "1":
-        query_image = input("🔍 Nhập đường dẫn ảnh truy vấn: ").strip()
-        test_external_image(query_image, top_k=3)
-
-    elif choice == "2":
-        test_internal_image_manual(top_k=3)
-
-    else:
-        print("⚠️ Lựa chọn không hợp lệ!")
+    # Tự động train và lưu model KNN (correlation) cho backend sử dụng
+    from sklearn.neighbors import KNeighborsClassifier
+    import joblib
+    knn = KNeighborsClassifier(n_neighbors=1, metric="correlation")
+    knn.fit(features, labels)
+    model_path = os.path.join(RESULT_PATH, "knn_correlation_model.joblib")
+    joblib.dump(knn, model_path)
+    print(f"\n✅ Đã train và lưu model KNN correlation vào {model_path}")

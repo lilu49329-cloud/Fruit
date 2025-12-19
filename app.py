@@ -10,6 +10,28 @@ from sklearn.neighbors import NearestNeighbors
 
 import os
 import datetime
+VIETNAMESE_FRUITS = {
+    'apple': 'Táo',
+    'avocado': 'Bơ',
+    'banana': 'Chuối',
+    'kiwi': 'Kiwi',
+    'mango': 'Xoài',
+    'orange': 'Cam',
+    'pear': 'Lê',
+    'pineapple': 'Dứa',
+    'strawberries': 'Dâu',
+    'watermelon': 'Dưa hấu',
+    '0': 'Táo',
+    '1': 'Bơ',
+    '2': 'Chuối',
+    '3': 'Kiwi',
+    '4': 'Xoài',
+    '5': 'Cam',
+    '6': 'Lê',
+    '7': 'Dứa',
+    '8': 'Dâu',
+    '9': 'Dưa hấu',
+}
 RESULT_PATH = os.path.join(os.path.dirname(__file__), "results")
 MODEL_PATH = os.path.join(RESULT_PATH, "knn_correlation_model.joblib")
 FEATURE_FILE = os.path.join(RESULT_PATH, "features.npy")
@@ -272,7 +294,23 @@ elif menu == "🍎 Nhận diện quả":
             img_preproc = preprocess_input(img_array)
             feat = base_model.predict(np.expand_dims(img_preproc, axis=0))
             pred = model.predict(feat)[0]
-            st.markdown(f"<div class='result-label'>🎯 Kết quả dự đoán: <span class='result-title'>{pred}</span></div>", unsafe_allow_html=True)
+            # Xử lý mapping nhãn: nếu là số thì lấy tên class, nếu là string thì dùng luôn
+            pred_str = None
+            if hasattr(model, 'classes_'):
+                # Nếu predict trả về số (int/np.int), lấy tên class từ model.classes_
+                if isinstance(pred, (int, np.integer)):
+                    pred_str = str(model.classes_[pred])
+                # Nếu predict trả về string, dùng luôn
+                elif isinstance(pred, (str, np.str_)):
+                    pred_str = pred
+                else:
+                    # Nếu là kiểu khác (ví dụ np.ndarray), ép sang string
+                    pred_str = str(pred)
+            else:
+                pred_str = str(pred)
+            # Định nghĩa pred_vn trước khi sử dụng
+            pred_vn = VIETNAMESE_FRUITS.get(pred_str, pred_str)
+            st.markdown(f"<div class='result-label'>🎯 Kết quả dự đoán: <span class='result-title'>{pred_vn}</span></div>", unsafe_allow_html=True)
         except Exception as e:
             st.error(f"❌ Lỗi xử lý model nhận diện: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -348,7 +386,6 @@ elif menu == "🔍 Tìm kiếm":
                 sim_img_rel = paths[img_idx]
                 sim_img_path = os.path.join(os.path.dirname(RESULT_PATH), os.path.normpath(sim_img_rel))
                 # Debug log path in a hidden block (for troubleshooting)
-                st.write(f"DEBUG: {sim_img_rel} => {sim_img_path}")
                 if os.path.exists(sim_img_path):
                     with cols[i]:
                         st.markdown(f"""
